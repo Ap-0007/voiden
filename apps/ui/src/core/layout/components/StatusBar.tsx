@@ -349,8 +349,7 @@ export const StatusBar = ({
 
   return (
     <>
-    {/* Cursor/VSCode-style status bar: noticeably thinner than the tab/title bars above it. */}
-    <div className="h-6 flex-none border-t border-border flex items-center justify-between bg-panel">
+    <div className="h-8 flex-none border-t border-border flex items-center justify-between bg-panel">
       {/* Left Status Items */}
       <div className="flex items-center h-full">
         <Tip label={<span className="flex items-center gap-2"><span>Toggle left panel</span><Kbd keys={getShortcutLabel("ToggleSidebar")} size="sm" /></span>}>

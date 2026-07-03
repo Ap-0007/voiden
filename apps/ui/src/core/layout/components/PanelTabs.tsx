@@ -354,9 +354,9 @@ const TabComponent = ({
               <div className="w-2 h-2 rounded-full bg-accent" />
             ) : null}
           </div>
-          <div className="flex items-center gap-1.5">
+          <div className="flex items-center gap-1.5 pr-1">
             {getTabIcon(tab)}
-            <span className={cn("truncate", tab.pending && "italic")}>{getTabDisplayTitle(tab)}</span>
+            <span className={cn("truncate", tab.pending && "italic px-2")}>{getTabDisplayTitle(tab)}</span>
           </div>
           <Tip label={<><span>Close tab</span>{isActive && <span className="ml-4">{getShortcutLabel("CloseTab")}</span>}</>} side="bottom">
             <button className="p-0.5 hover:bg-active rounded-sm opacity-0 group-hover:opacity-100" onClick={handleClose}>
