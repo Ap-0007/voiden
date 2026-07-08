@@ -23,6 +23,7 @@ import { setEnvJumpTarget } from "@/core/environment/components/EnvironmentEdito
 import { useEnvironments } from "@/core/environment/hooks";
 import { mountVariableValueTooltip, unmountVariableValueTooltip } from "@/core/editors/variableValueTooltip";
 import { usePanelStore } from "@/core/stores/panelStore";
+import { isMac } from "@/core/lib/utils";
 
 export const AppLayout = () => {
   const { toggle: toggleLeft, panelProps: leftPanelProps, isCollapsed: isLeftCollapsed } = useLeftPanel();
@@ -384,10 +385,14 @@ export const AppLayout = () => {
     // Trigger find in the active editor
     // Dispatch on body (not document) so e.target has .closest()
     const target = (document.activeElement as HTMLElement) || document.body;
+    // Only set the platform's actual primary modifier — matchesShortcut()
+    // compares an exact modifier bitmask, so setting both metaKey and
+    // ctrlKey together never matches either platform's Find binding.
     target.dispatchEvent(new KeyboardEvent('keydown', {
       key: 'f',
-      metaKey: true,
-      ctrlKey: true,
+      code: 'KeyF',
+      metaKey: isMac,
+      ctrlKey: !isMac,
       bubbles: true,
     }));
   });
