@@ -1,5 +1,43 @@
 [
   {
+    "version": "v2.2.0",
+    "date": "08/07/2026",
+    "title": "Hierarchical Request Inheritance & Editor Reliability",
+    "description": "Feature release adding hierarchical inheritance for request configuration, plugin-extensible cURL export, preview tabs, and a large batch of editor reliability and usability fixes.",
+    "icon": "Sparkles",
+    "iconColor": "text-emerald-400",
+    "bgColor": "bg-gradient-to-br from-emerald-900 to-slate-900",
+    "changes": {
+      "Added": [
+        "Hierarchical inheritance for request configuration — a folder-level .voiden-inherited file can now cascade auth, headers, and other shared config down to every request nested inside it, instead of duplicating the same config in every file (#469)",
+        "Description column added to headers, query params, and options tables, so each row can carry its own documentation (#261)",
+        "Preview/pending tabs — single-clicking a file opens it in a reusable preview tab that gets replaced by the next preview, instead of always opening a new permanent tab",
+        "Plugin update notifications — a toast now appears when core or community plugin updates are available, and clicking it opens the Plugins panel directly to the Updates tab instead of leaving you to find it yourself (#486)",
+        "Plugins can now register cURL extenders to inject extra headers, query params, or raw flags into \"Copy as cURL\" output (e.g. for auth types the base generator doesn't cover)",
+        "Code ligature support (Fira Code, JetBrains Mono, etc.) and crisper font rendering across the editor and UI"
+      ],
+      "Improved": [
+        "Toggling individual header/param/option rows on and off is now far more discoverable (#130)",
+        "Generic markdown blocks (plain paragraphs, headings, code blocks) now import and link correctly instead of being silently dropped when nested inside another file's linked blocks (#321, #265)",
+        "Response viewer no longer tears down and rebuilds the entire editor on every new response — switching between requests feels noticeably snappier",
+        "Autocomplete/suggestion popups (variable capture, response suggestions) now support seamless up/down arrow navigation",
+        "Keyboard shortcut hints now show the platform-correct combination (e.g. ⌘↵ vs Ctrl+Enter) instead of always showing the Mac version (#484)",
+        "Electron now honors macOS custom keyboard remapping (Karabiner, System Settings custom shortcuts) for app-level shortcuts instead of matching the raw physical key"
+      ],
+      "Fixed": [
+        "UI flickering while scrolling in the editor (#483)",
+        "Backspace at the boundary of a registered block (request, response, etc.) no longer corrupts or incorrectly merges surrounding content",
+        "Editor context-menu copy/paste no longer crashes if the window closes between opening the menu and clicking an item",
+        "Request history is now enabled by default and correctly records the source file path — history entries were silently being skipped",
+        "App-update quit prevention no longer blocks quitting incorrectly, and environment editor in-place edits save correctly",
+        "Extremely long single lines in the code editor (e.g. minified files) no longer freeze the editor",
+        "Cmd/Ctrl+F now correctly opens Find in both the Voiden editor and the code editor — a platform keyboard-remapping fix had left the replayed shortcut event with the wrong key code and modifiers",
+        "Opening a .void file with a GraphQL block no longer shows a false \"unsaved changes\" indicator immediately on load",
+        "Opening a .void tab no longer crashes when its content resolves to null (e.g. a newly imported large file still being written to disk)"
+      ]
+    }
+  },
+  {
     "version": "v2.1.1",
     "date": "25/06/2026",
     "title": "Environment IPC Rework & Editor Fixes",
