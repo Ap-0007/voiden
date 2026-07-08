@@ -38,6 +38,22 @@ import { recomposeAndInstall } from "./skillsInstaller";
 import { reloadMainProcessExtension } from "./extensionLoader";
 import { logger } from "./logger";
 
+// Mirrors CodeEditor.tsx's LONG_LINE_THRESHOLD/hasVeryLongLine — a single line
+// this long is its own layout/perf cliff for the editor regardless of total
+// file size, so both sides of the IPC boundary need to agree on what counts
+// as "needs the streamed loading path".
+const LONG_LINE_THRESHOLD = 20_000;
+function hasVeryLongLine(content: string): boolean {
+  let lineStart = 0;
+  for (let i = 0; i <= content.length; i++) {
+    if (i === content.length || content.charCodeAt(i) === 10) {
+      if (i - lineStart > LONG_LINE_THRESHOLD) return true;
+      lineStart = i + 1;
+    }
+  }
+  return false;
+}
+
 function maybeRecomposeSkills(state: AppState): void {
   const skills = getSettings().skills;
   if (skills?.claude || skills?.codex) {
@@ -733,12 +749,25 @@ export const ipcStateHandlers = () => {
         }
 
         try {
-          const STREAM_THRESHOLD = 1 * 1024 * 1024;
+          // Matches the renderer's MEDIUM_FILE_THRESHOLD (CodeEditor.tsx) so any
+          // file that would get the "medium file" treatment there also gets
+          // streamed in here — one consistent line for "big enough to need a
+          // loading indicator instead of a single blocking payload".
+          const STREAM_THRESHOLD = 512 * 1024;
           const stat = await fs.stat(source);
           if (stat.size > STREAM_THRESHOLD) {
             return { type: "document", tabId, title, content: null, source, streamable: true, fullSize: stat.size };
           }
           const content = await fs.readFile(source, "utf8");
+          // A file can be small in total bytes yet contain one pathologically
+          // long line (e.g. a minified blob or an escaped JSON payload on a
+          // single line) — that alone is expensive for the editor to lay out.
+          // Route it through the same streamed/opt-in-highlighting path as a
+          // genuinely large file instead of handing it over as one synchronous
+          // payload that forces an expensive initial render.
+          if (hasVeryLongLine(content)) {
+            return { type: "document", tabId, title, content: null, source, streamable: true, fullSize: stat.size };
+          }
           return { type: "document", tabId, title, content, source };
         } catch (error) {
           return { type: "document", tabId, title, content: null, source };
