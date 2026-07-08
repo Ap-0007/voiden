@@ -23,6 +23,11 @@
           "icon": "🐛",
           "title": "Editor Reliability Fixes",
           "description": "Cmd/Ctrl+F now reliably opens Find in every editor, backspace no longer corrupts content at block boundaries, huge single lines no longer freeze the code editor, scrolling flicker is gone, and a false \"unsaved changes\" indicator on GraphQL files is fixed."
+        },
+        {
+          "icon": "💾",
+          "title": "Quit Confirmation for Unsaved Tabs",
+          "description": "Quitting with unsaved changes no longer saves everything silently or risks losing your edits — Voiden now shows you exactly which tabs are unsaved and lets you save, discard, or cancel before closing."
         }
       ]
     },

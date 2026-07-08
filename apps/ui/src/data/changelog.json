@@ -33,7 +33,8 @@
         "Extremely long single lines in the code editor (e.g. minified files) no longer freeze the editor",
         "Cmd/Ctrl+F now correctly opens Find in both the Voiden editor and the code editor — a platform keyboard-remapping fix had left the replayed shortcut event with the wrong key code and modifiers",
         "Opening a .void file with a GraphQL block no longer shows a false \"unsaved changes\" indicator immediately on load",
-        "Opening a .void tab no longer crashes when its content resolves to null (e.g. a newly imported large file still being written to disk)"
+        "Opening a .void tab no longer crashes when its content resolves to null (e.g. a newly imported large file still being written to disk)",
+        "Quitting with unsaved tabs no longer silently saves everything to disk and exits — a dialog now lists the unsaved tabs and lets you Save All & Quit, Don't Save, or Cancel"
       ]
     }
   },
