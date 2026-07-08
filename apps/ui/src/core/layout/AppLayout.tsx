@@ -88,7 +88,11 @@ export const AppLayout = () => {
       }
     }
 
-    if (panelStateForTab) {
+    if (targetTab?.type === "settings") {
+      // Settings is not a request/document tab: it never has a response/right panel
+      // to show, so always force it closed regardless of what the previous tab left behind.
+      closeRightPanel();
+    } else if (panelStateForTab) {
       // Restore exactly what was open/closed and which sidebar tab was active for this doc tab
       panelStateForTab.rightPanelOpen ? openRightPanel() : closeRightPanel();
       if (panelStateForTab.activeSidebarTabId) {

@@ -27,6 +27,7 @@ import { registerPythonScriptIpcHandler } from "./main/ipc/pythonScript";
 import { registerNodeScriptIpcHandler } from "./main/ipc/nodeScript";
 import { registerCoreExtensionsIpcHandlers, watchBundledPluginsForDevReload, seedBundledPluginsToCache } from "./main/ipc/coreExtensions";
 import { loadMainProcessExtensions, unloadMainProcessExtensions } from "./main/extensionLoader";
+import { flushRendererUnsavedForPaths } from "./main/fileSystem";
 import { recomposeAndInstall } from "./main/skillsInstaller";
 import { setupLoggerIPC, logger } from "./main/logger";
 import { initializeIntegratedLogging } from "./main/loggerIntegration";
@@ -265,9 +266,20 @@ app.on("activate", async () => {
 });
 
 // Cleanup on quit
-app.on("before-quit", async () => {
-  await unloadMainProcessExtensions();
-  closeAllWatchers();
+// Every quit path (Cmd+Q, menu Quit, app.quit() elsewhere) fires "before-quit" first.
+// We intercept it once to flush any unsaved tab content to disk — without this,
+// Electron tears down renderers immediately and in-memory drafts are silently lost.
+let isQuittingAfterFlush = false;
+app.on("before-quit", (event) => {
+  if (isQuittingAfterFlush) return;
+  event.preventDefault();
+  (async () => {
+    await flushRendererUnsavedForPaths([]);
+    await unloadMainProcessExtensions();
+    closeAllWatchers();
+    isQuittingAfterFlush = true;
+    app.quit();
+  })();
 });
 
 

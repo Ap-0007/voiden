@@ -15,6 +15,7 @@ import type { Extension } from "@/types";
 import { cn } from "@/core/lib/utils";
 import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
 import { usePluginStore } from "@/plugins";
+import { usePanelStore } from "@/core/stores/panelStore";
 import { toast } from "@/core/components/ui/sonner";
 import { Tip } from "@/core/components/ui/Tip";
 import logo from "@/assets/logo-dark.png";
@@ -556,6 +557,27 @@ export const ExtensionBrowser = () => {
   const [category, setCategory] = useState<"all" | "core" | "community" | "installed" | "updates">("all");
   const [isRefreshing, setIsRefreshing] = useState(false);
 
+  // ExtensionBrowser is always mounted (just hidden) when another left-sidebar
+  // tab is active, so the update-available toast can fire while the panel is
+  // collapsed or a different tab is showing. Force both open so the user
+  // actually sees what the toast is telling them about.
+  const revealPluginsTab = () => {
+    const { leftPanelRef, openLeftPanel } = usePanelStore.getState();
+    if (leftPanelRef?.current?.isCollapsed()) {
+      leftPanelRef.current.expand();
+    }
+    openLeftPanel();
+
+    const sidebarTabs = queryClient.getQueryData<{ tabs?: Array<{ id: string; type: string }> }>(["sidebar:tabs", "left"]);
+    const pluginsTab = sidebarTabs?.tabs?.find((tab) => tab.type === "extensionBrowser");
+    if (pluginsTab) {
+      window.electron?.sidebar.activateTab("left", pluginsTab.id);
+      queryClient.setQueryData(["sidebar:tabs", "left"], (old: any) =>
+        old ? { ...old, activeTabId: pluginsTab.id } : old
+      );
+    }
+  };
+
   const doFetchRegistry = async () => {
     const coreExt = (window as any).electron?.coreExtensions;
     const extApi = (window as any).electron?.extensions;
@@ -578,9 +600,10 @@ export const ExtensionBrowser = () => {
       const totalUpdates = coreUpdateCount + communityUpdateCount;
       if (totalUpdates > 0 && !_hasShownUpdateToast) {
         _hasShownUpdateToast = true;
+        revealPluginsTab();
         toast.info(
           totalUpdates === 1 ? '1 plugin update available' : `${totalUpdates} plugin updates available`,
-          { description: 'Switch to "Updates" in the Plugin Manager to install.', action: { label: 'View', onClick: () => setCategory('updates') } }
+          { description: 'Switch to "Updates" in the Plugin Manager to install.', action: { label: 'View', onClick: () => { revealPluginsTab(); setCategory('updates'); } } }
         );
       }
     } catch {
@@ -617,9 +640,10 @@ export const ExtensionBrowser = () => {
     doCheckUpdates().then((count) => {
       if (count > 0 && !_hasShownUpdateToast) {
         _hasShownUpdateToast = true;
+        revealPluginsTab();
         toast.info(
           count === 1 ? '1 plugin update available' : `${count} plugin updates available`,
-          { description: 'Switch to "Updates" in the Plugin Manager to install.', action: { label: 'View', onClick: () => setCategory('updates') } }
+          { description: 'Switch to "Updates" in the Plugin Manager to install.', action: { label: 'View', onClick: () => { revealPluginsTab(); setCategory('updates'); } } }
         );
       }
     });
