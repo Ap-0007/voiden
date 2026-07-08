@@ -39,9 +39,10 @@ import { useVoidVariables } from "@/core/runtimeVariables/hook/useVariableCaptur
 import { useQueryClient } from "@tanstack/react-query";
 import { matchesShortcut } from "@/core/shortcuts";
 
-// Remove uid attrs added by the UniqueID extension before JSON comparison.
-// parseMarkdown output never has uid attrs, so including them makes every
-// comparison unequal and marks the tab permanently dirty.
+// Remove uid attrs before JSON comparison. Generator-written files (postman-import,
+// openapi-import, etc.) legitimately embed real uid values in parseMarkdown output, and
+// the UniqueID extension backfills uids on load for nodes that lack them — so both sides
+// of the dirty-check must be stripped, or any uid-bearing node marks the tab permanently dirty.
 const stripUidAttrs = (node: unknown): unknown => {
   if (!node || typeof node !== "object") return node;
   if (Array.isArray(node)) return node.map(stripUidAttrs);
@@ -604,7 +605,7 @@ const VoidenEditorInner = ({
     try {
       const parsed = parseMarkdown(content, memoizedSchema);
       const sanitized = sanitizeDoc(parsed);
-      savedContentJSONRef.current = JSON.stringify(sanitized);
+      savedContentJSONRef.current = JSON.stringify(stripUidAttrs(sanitized));
     } catch {
       savedContentJSONRef.current = null;
     }
@@ -646,7 +647,7 @@ const VoidenEditorInner = ({
           }
 
           try {
-            savedContentJSONRef.current = JSON.stringify(santizedContent);
+            savedContentJSONRef.current = JSON.stringify(stripUidAttrs(santizedContent));
           } catch {  }
 
           // Rebuild env/variable/faker highlight decorations.
@@ -737,7 +738,7 @@ const VoidenEditorInner = ({
                 requestAnimationFrame(loadNextChunk);
               } else {
                 // All chunks inserted — finalise exactly like applyContent does.
-                try { savedContentJSONRef.current = JSON.stringify(santizedContent); } catch { /* ignore */ }
+                try { savedContentJSONRef.current = JSON.stringify(stripUidAttrs(santizedContent)); } catch { /* ignore */ }
                 // Rebuild highlight decorations now that the full document is in place.
                 if (!editor.isDestroyed) {
                   editor.view.dispatch(
