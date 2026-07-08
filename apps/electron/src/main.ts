@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain } from "electron";
+import { app, BrowserWindow, ipcMain, dialog } from "electron";
 import path from "node:path";
 import { ipcStateHandlers } from "./main/state";
 import { registerSettingsIpc, getSettings } from "./main/settings";
@@ -27,7 +27,7 @@ import { registerPythonScriptIpcHandler } from "./main/ipc/pythonScript";
 import { registerNodeScriptIpcHandler } from "./main/ipc/nodeScript";
 import { registerCoreExtensionsIpcHandlers, watchBundledPluginsForDevReload, seedBundledPluginsToCache } from "./main/ipc/coreExtensions";
 import { loadMainProcessExtensions, unloadMainProcessExtensions } from "./main/extensionLoader";
-import { flushRendererUnsavedForPaths } from "./main/fileSystem";
+import { flushRendererUnsavedForPaths, getUnsavedTabTitles } from "./main/fileSystem";
 import { recomposeAndInstall } from "./main/skillsInstaller";
 import { setupLoggerIPC, logger } from "./main/logger";
 import { initializeIntegratedLogging } from "./main/loggerIntegration";
@@ -267,14 +267,38 @@ app.on("activate", async () => {
 
 // Cleanup on quit
 // Every quit path (Cmd+Q, menu Quit, app.quit() elsewhere) fires "before-quit" first.
-// We intercept it once to flush any unsaved tab content to disk — without this,
-// Electron tears down renderers immediately and in-memory drafts are silently lost.
+// We intercept it once to check for unsaved tabs — if any exist, ask the user
+// whether to save, discard, or cancel instead of quitting (or silently saving)
+// out from under them.
 let isQuittingAfterFlush = false;
 app.on("before-quit", (event) => {
   if (isQuittingAfterFlush) return;
   event.preventDefault();
   (async () => {
-    await flushRendererUnsavedForPaths([]);
+    const unsavedTitles = await getUnsavedTabTitles();
+
+    if (unsavedTitles.length > 0) {
+      const win = BrowserWindow.getFocusedWindow() ?? BrowserWindow.getAllWindows()[0];
+      const dialogOptions = {
+        type: "warning" as const,
+        buttons: ["Save All & Quit", "Don't Save", "Cancel"],
+        defaultId: 0,
+        cancelId: 2,
+        title: "Unsaved Changes",
+        message: unsavedTitles.length === 1
+          ? `"${unsavedTitles[0]}" has unsaved changes.`
+          : `${unsavedTitles.length} tabs have unsaved changes.`,
+        detail: unsavedTitles.length > 1 ? unsavedTitles.map((t) => `• ${t}`).join("\n") : undefined,
+      };
+      const { response } = win
+        ? await dialog.showMessageBox(win, dialogOptions)
+        : await dialog.showMessageBox(dialogOptions);
+
+      if (response === 2) return; // Cancel — abort quitting entirely
+      if (response === 0) await flushRendererUnsavedForPaths([]); // Save All & Quit
+      // response === 1 (Don't Save) — proceed without flushing
+    }
+
     await unloadMainProcessExtensions();
     closeAllWatchers();
     isQuittingAfterFlush = true;

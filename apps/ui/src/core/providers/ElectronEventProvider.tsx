@@ -303,6 +303,13 @@ export const ElectronEventProvider: React.FC<{ children: React.ReactNode }> = ({
         await Promise.all(matchingTabs.map((t) => saveTabById(t.id, { silent: true })));
         window.electron?.files.acknowledgeUnsavedSaved(requestId);
       },
+      "files:queryUnsavedTabs": (_event: any, requestId: string) => {
+        const panelTabs = queryClient.getQueryData<{ tabs: { id: string; title: string }[]; activeTabId: string }>(["panel:tabs", "main"]);
+        const tabs = panelTabs?.tabs ?? [];
+        const unsaved = useEditorStore.getState().unsaved;
+        const titles = tabs.filter((t) => t.id in unsaved).map((t) => t.title);
+        window.electron?.files.replyUnsavedTabs(requestId, titles);
+      },
     };
 
     // Only attach listeners if not already attached (handles React Strict Mode)

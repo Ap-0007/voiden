@@ -202,6 +202,7 @@ declare global {
           callback: (requestId: string, paths: string[]) => void,
         ) => () => void;
         acknowledgeUnsavedSaved: (requestId: string) => void;
+        replyUnsavedTabs: (requestId: string, titles: string[]) => void;
       };
       startSearch: (args: { query: string; matchCase: boolean; matchWholeWord: boolean; useRegex: boolean; useMultiline: boolean; searchId: number; fileMask?: string; dirMask?: string; includeHidden?: boolean }) => void;
       cancelSearch: (searchId: number) => void;

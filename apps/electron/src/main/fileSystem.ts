@@ -588,6 +588,46 @@ function applyVoidFileReferenceUpdates(
   return { updatedSource, count };
 }
 
+/** Ask all renderer windows for the display titles of every currently-unsaved tab.
+ *  Waits up to 3 seconds total, aggregating replies from every window so a second
+ *  window's unsaved tabs are never missed just because another window replied
+ *  first. A window that never replies (stuck/unresponsive) is simply excluded
+ *  rather than blocking quitting indefinitely. */
+export function getUnsavedTabTitles(): Promise<string[]> {
+  return new Promise<string[]>((resolve) => {
+    const windows = BrowserWindow.getAllWindows();
+    if (windows.length === 0) {
+      resolve([]);
+      return;
+    }
+    const requestId = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    const replyChannel = `files:unsavedTabsReply:${requestId}`;
+    const titles: string[] = [];
+    let remaining = windows.length;
+    let settled = false;
+
+    const finish = () => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timeout);
+      ipcMain.removeListener(replyChannel, onReply);
+      resolve(titles);
+    };
+
+    const timeout = setTimeout(finish, 3000);
+    const onReply = (_event: Electron.IpcMainEvent, windowTitles: string[]) => {
+      titles.push(...windowTitles);
+      remaining -= 1;
+      if (remaining <= 0) finish();
+    };
+
+    ipcMain.on(replyChannel, onReply);
+    for (const w of windows) {
+      w.webContents.send("files:queryUnsavedTabs", requestId);
+    }
+  });
+}
+
 /** Ask all renderer windows to flush unsaved content for the given file paths to disk
  *  (or every unsaved tab, if `paths` is empty). Waits up to 3 seconds for acknowledgment
  *  before proceeding. */
