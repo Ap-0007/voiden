@@ -707,7 +707,7 @@ const PanelContentInner = ({ panelId }: { panelId: string }) => {
                 {(docTab.title.endsWith(".void") || docTab.source?.replace(/\\/g, "/").endsWith("/.voiden-inherited")) ? (
                   <VoidenEditor
                     tabId={docTab.tabId}
-                    content={docTab.content}
+                    content={docTab.content ?? ""}
                     source={docTab.source}
                     panelId={panelId}
                     hasSearch
