@@ -104,6 +104,15 @@ const DisableMarkdownInTables = Extension.create({
           return false;
         }
 
+        // Atom nodes (e.g. fileLink) aren't plain characters — even an empty
+        // one occupies 2 positions (open + close boundary), not 1. Deleting
+        // a hardcoded single position leaves the node un-removable instead
+        // of deleting the whole atom.
+        const nodeBefore = $from.nodeBefore;
+        if (nodeBefore && nodeBefore.type.spec.atom) {
+          return this.editor.commands.deleteRange({ from: $from.pos - nodeBefore.nodeSize, to: $from.pos });
+        }
+
         return this.editor.commands.deleteRange({ from: $from.pos - 1, to: $from.pos });
       },
     };
