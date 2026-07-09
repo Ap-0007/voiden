@@ -749,13 +749,22 @@ export const ipcStateHandlers = () => {
         }
 
         try {
+          // .void files have no chunked-streaming equivalent — VoidenEditor
+          // must parse the whole file as one ProseMirror doc (blocks can't be
+          // reconstructed from an arbitrary byte-offset slice the way plain
+          // text can), and never reads content.streamable/fullSize at all.
+          // Routing one through the streamable path below would silently hand
+          // VoidenEditor `content: null` (rendered as an empty document)
+          // instead of the file's real content, so always do a full read here.
+          const isVoidenFile = fileExt === "void";
+
           // Matches the renderer's MEDIUM_FILE_THRESHOLD (CodeEditor.tsx) so any
           // file that would get the "medium file" treatment there also gets
           // streamed in here — one consistent line for "big enough to need a
           // loading indicator instead of a single blocking payload".
           const STREAM_THRESHOLD = 512 * 1024;
           const stat = await fs.stat(source);
-          if (stat.size > STREAM_THRESHOLD) {
+          if (!isVoidenFile && stat.size > STREAM_THRESHOLD) {
             return { type: "document", tabId, title, content: null, source, streamable: true, fullSize: stat.size };
           }
           const content = await fs.readFile(source, "utf8");
@@ -765,7 +774,7 @@ export const ipcStateHandlers = () => {
           // Route it through the same streamed/opt-in-highlighting path as a
           // genuinely large file instead of handing it over as one synchronous
           // payload that forces an expensive initial render.
-          if (hasVeryLongLine(content)) {
+          if (!isVoidenFile && hasVeryLongLine(content)) {
             return { type: "document", tabId, title, content: null, source, streamable: true, fullSize: stat.size };
           }
           return { type: "document", tabId, title, content, source };

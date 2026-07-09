@@ -113,16 +113,27 @@ export type CurlExtenderResult = {
   queryParams?: CurlHeaderEntry[];
   /** Raw cURL flags appended verbatim, e.g. ['--digest', '-u "user:pass"']. */
   flags?: string[];
+  /**
+   * Set when this auth type has no static cURL representation (e.g. Hawk,
+   * Atlassian ASAP, OAuth1 with HMAC signing — all require a live-computed
+   * signature over the exact request). Surfaced to the user as a toast
+   * instead of silently omitting the auth with no explanation.
+   */
+  warning?: string;
 };
 export type CurlHeaderExtenderFn = (doc: any) => Promise<CurlExtenderResult>;
-const curlHeaderExtenders: CurlHeaderExtenderFn[] = [];
+// Keyed by extensionId (not a plain array) so a plugin re-registering on
+// reload/HMR overwrites its own previous entry instead of accumulating a new
+// duplicate each time — an array would apply the same extender's flags once
+// per accumulated registration, multiplying auth flags in generated cURL.
+const curlHeaderExtenders = new Map<string, CurlHeaderExtenderFn>();
 
-export function registerCurlHeaderExtender(fn: CurlHeaderExtenderFn): void {
-  curlHeaderExtenders.push(fn);
+export function registerCurlHeaderExtender(extensionId: string, fn: CurlHeaderExtenderFn): void {
+  curlHeaderExtenders.set(extensionId, fn);
 }
 
 export function getCurlHeaderExtenders(): readonly CurlHeaderExtenderFn[] {
-  return curlHeaderExtenders;
+  return Array.from(curlHeaderExtenders.values());
 }
 
 /**
@@ -1045,8 +1056,19 @@ export const createPlugin = (
        * headers are only added when no header with the same key already exists.
        */
       registerCurlHeaderExtender: (fn: CurlHeaderExtenderFn) => {
-        curlHeaderExtenders.push(fn);
+        curlHeaderExtenders.set(extensionId, fn);
       },
+      /**
+       * Read back the currently registered cURL header extenders. Exposed on
+       * context (like registerCurlHeaderExtender) so a *consuming* plugin
+       * (e.g. voiden-rest-api's CopyCurlButton) can fetch the list through
+       * its own reliably-wired context object, instead of a plugin bundle
+       * dynamically importing this app module by path at runtime — that
+       * cross-plugin-bundle import has no guaranteed resolution and can
+       * silently fail, silently dropping every extended auth type from
+       * generated cURL commands with no error surfaced anywhere.
+       */
+      getCurlHeaderExtenders: (): readonly CurlHeaderExtenderFn[] => getCurlHeaderExtenders(),
     } as any,
     history: {
       /**

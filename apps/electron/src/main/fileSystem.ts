@@ -166,12 +166,18 @@ export async function createVoidFile(
   // Allow callers to pass nested/new paths by ensuring parent folders exist.
   await fs.promises.mkdir(filePath, { recursive: true });
 
-  let finalName = fileName.endsWith(".void") ? fileName : fileName + ".void";
+  // Derive baseName/ext once, from the target extension — not by re-deriving
+  // from the caller's original (always extensionless) fileName on each loop
+  // iteration, which previously computed an empty ext and silently dropped
+  // .void from every duplicate past the first (e.g. "Get User 1" with no
+  // extension), making the file invisible to the editor's file tree.
+  const baseName = fileName.endsWith(".void") ? fileName.slice(0, -".void".length) : fileName;
+  const ext = ".void";
+
+  let finalName = `${baseName}${ext}`;
   let counter = 1;
 
   while (fs.existsSync(path.join(filePath, finalName))) {
-    const ext = path.extname(fileName);
-    const baseName = path.basename(fileName, ext);
     finalName = `${baseName} ${counter}${ext}`;
     counter++;
   }

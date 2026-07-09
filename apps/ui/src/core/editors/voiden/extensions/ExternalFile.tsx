@@ -39,6 +39,7 @@ export interface FileLinkListProps {
   items: FileLinkItem[];
   command: (item: FileLinkItem | { block: JSONContent; originalFile: string }) => void;
   query: string;
+  range?: Range;
 }
 
 /**
@@ -396,12 +397,33 @@ export function BlockPreviewEditor({ block, pmNodePos: ownPmNodePos, blockUid }:
 }
 
 const FileLinkTippyContent = forwardRef((props: FileLinkListProps & { editor?: Editor }, ref) => {
-  const { command, editor: parentEditor } = props;
+  const { command, editor: parentEditor, range } = props;
   const [selectedFile, setSelectedFile] = useState<FileLinkItem | null>(null);
   const { data: voidenFiles } = useGetApyFiles();
   const [listSelectedIndex, setListSelectedIndex] = useState(0);
   const [isBlockMode, setIsBlockMode] = useState(false);
   const [multiSelectedItems, setMultiSelectedItems] = useState<(FileLinkItem | JSONContent)[]>([]);
+
+  // Block-mode ("→ or Space see blocks") lets a Markdown/.void file resolve to a
+  // linkedBlock/linkedFile — those are block-level nodes buildBodyParams (the REST
+  // multipart-table reader) never scans for, so picking a block here inside a
+  // multipart-table file cell silently drops the row from the outgoing request
+  // instead of attaching the file. A plain file (e.g. .csv) has no parseable
+  // blocks so it can never take this path — only Markdown/.void ever hit it.
+  // Disable block mode entirely inside any table cell so an "attach file" @-mention
+  // there always resolves to a plain fileLink, never a block/section import.
+  const isInsideTableCell = useMemo(() => {
+    if (!parentEditor || !range) return false;
+    try {
+      const $pos = parentEditor.state.doc.resolve(range.from);
+      for (let depth = $pos.depth; depth > 0; depth--) {
+        if ($pos.node(depth).type.name === "tableCell") return true;
+      }
+    } catch {
+      return false;
+    }
+    return false;
+  }, [parentEditor, range]);
 
   // Accumulated file corpus — grows as server returns results for each query.
   // Never shrinks so previously found files remain filterable client-side.
@@ -597,7 +619,7 @@ const FileLinkTippyContent = forwardRef((props: FileLinkListProps & { editor?: E
       }
 
       // Arrow Right or Space: Expand to block mode (if in file mode)
-      if ((event.key === "ArrowRight" || event.key === " ") && !isBlockMode) {
+      if ((event.key === "ArrowRight" || event.key === " ") && !isBlockMode && !isInsideTableCell) {
         const currentItem = filteredItems[listSelectedIndex] as FileLinkItem;
         if (!currentItem || currentItem.isNew || !voidenFiles) {
           return false; // allow editor to handle the arrow key normally
@@ -1103,7 +1125,7 @@ const FileLinkTippyContent = forwardRef((props: FileLinkListProps & { editor?: E
 
       {/* Footer */}
       <div className="px-3 py-2 text-xs bg-bg border-t border-border flex justify-between items-center flex-shrink-0">
-        <span className="text-comment">↵ link file • → or Space see blocks</span>
+        <span className="text-comment">↵ link file{!isInsideTableCell && " • → or Space see blocks"}</span>
         <span className="text-comment">Shift+↵ multi-select</span>
       </div>
     </div>

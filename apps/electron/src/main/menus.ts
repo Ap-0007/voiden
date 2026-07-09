@@ -73,7 +73,7 @@ export const createFileTreeContextMenu = (mainWindow: BrowserWindow) => {
         },
         { type: "separator" as const },
         {
-          label: fs.existsSync(path.join(data.path, ".voiden-inherited"))
+          label: fs.existsSync(path.join(data.path, ".voiden-inherited.void"))
             ? "Edit Config Inheritance"
             : "Add Config Inheritance",
           click: async () => {

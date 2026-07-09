@@ -11,7 +11,7 @@ const NON_INHERITABLE_BLOCK_TYPES = new Set([
 ]);
 
 /**
- * Resolves and injects blocks from ancestor .voiden-inherited files into the
+ * Resolves and injects blocks from ancestor .voiden-inherited.void files into the
  * document JSON using REPLACEMENT semantics:
  *
  * - A block type already present in the child is never overridden — the child

@@ -2,7 +2,7 @@ import { Editor } from "@tiptap/react";
 
 function getInheritedFolderName(importedDocumentId: string): string | null {
   const normalized = importedDocumentId.replace(/\\/g, "/");
-  if (!normalized.endsWith("/.voiden-inherited")) return null;
+  if (!normalized.endsWith("/.voiden-inherited.void")) return null;
   const parts = normalized.split("/");
   return parts[parts.length - 2] ?? null;
 }

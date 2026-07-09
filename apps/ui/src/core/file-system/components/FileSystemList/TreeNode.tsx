@@ -2,7 +2,7 @@ import React, { useContext, useEffect, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { ChevronRight, ChevronsDownUp, ChevronsUpDown } from "lucide-react";
 import { NodeApi, NodeRendererProps, TreeApi } from "react-arborist";
-const INHERITED_FILENAME = ".voiden-inherited";
+const INHERITED_FILENAME = ".voiden-inherited.void";
 import { Tip } from "@/core/components/ui/Tip";
 import { cn } from "@/core/lib/utils";
 import { useActivateTab } from "@/core/layout/hooks";

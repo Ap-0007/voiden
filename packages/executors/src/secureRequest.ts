@@ -119,6 +119,7 @@ export function getFileMimeType(filePath: string): string {
     '.mp4': 'video/mp4',              '.mp3':  'audio/mpeg',
     '.wav': 'audio/wav',
     '.csv': 'text/csv',               '.tsv':  'text/tab-separated-values',
+    '.md': 'text/markdown',           '.markdown': 'text/markdown',
   }
   return mime[ext] ?? 'application/octet-stream'
 }

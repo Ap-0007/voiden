@@ -196,7 +196,7 @@ class RequestOrchestratorImpl implements RequestOrchestrator {
       if (expandedJson.content?.some((n: any) => n.type === "linkedFile")) {
         expandedJson = await expandLinkedFilesInDoc(expandedJson, (editor as any).schema);
       }
-      // Append blocks from ancestor .voiden-inherited files. These are appended
+      // Append blocks from ancestor .voiden-inherited.void files. These are appended
       // after the request's own blocks so local values always take precedence via
       // the existing importedFrom-aware merge logic in getTable and parseAuthNode.
       if (options?.filePath) {

@@ -772,13 +772,6 @@ export const FileSystemList = () => {
     // Refresh the folder so the file appears in the tree.
     await refreshDir(eventData.path);
 
-    if (!result.created) {
-      toast.info("Inherited config already exists", {
-        description: "Opening the existing .voiden-inherited file.",
-        duration: 3000,
-      });
-    }
-
     // Derive a meaningful tab title from the containing folder name.
     const folderName = eventData.path.replace(/\\/g, "/").split("/").filter(Boolean).pop() ?? "inherited";
     const inheritedTabTitle = `${folderName} — inherited`;

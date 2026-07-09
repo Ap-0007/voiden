@@ -95,7 +95,7 @@ const iconMap: Record<string, JSX.Element> = {
 };
 
 const getTabDisplayTitle = (tab: Tab): string => {
-  if (tab.source?.replace(/\\/g, "/").endsWith("/.voiden-inherited")) {
+  if (tab.source?.replace(/\\/g, "/").endsWith("/.voiden-inherited.void")) {
     const parts = tab.source.replace(/\\/g, "/").split("/");
     const folderName = parts[parts.length - 2] ?? "inherited";
     return `${folderName} — inherited`;
@@ -117,7 +117,7 @@ const getTabIcon = (tab: Tab): JSX.Element => {
     const fileName = tab.source.split('/').pop() || tab.title;
     
     // Special file name checks (similar to FileSystemList)
-    if (fileName === ".voiden-inherited") return <Infinity size={14} className="text-accent" />;
+    if (fileName === ".voiden-inherited.void") return <Infinity size={14} className="text-accent" />;
     if (fileName.startsWith(".env")) return <Settings2 size={14} />;
     if (fileName.startsWith(".gitignore")) return <GitBranch size={14} />;
     if (fileName.startsWith("Dockerfile")) return <Container size={14} />;

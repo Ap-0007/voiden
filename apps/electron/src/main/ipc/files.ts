@@ -847,7 +847,7 @@ export function registerFileIpcHandlers() {
   ipcMain.handle(
     "files:resolveInheritedChain",
     async (_event, filePath: string, workspaceRoot: string): Promise<string[]> => {
-      const INHERITED_FILENAME = ".voiden-inherited";
+      const INHERITED_FILENAME = ".voiden-inherited.void";
       const chain: string[] = [];
 
       let dir = path.dirname(filePath);
@@ -883,7 +883,7 @@ export function registerFileIpcHandlers() {
   ipcMain.handle(
     "files:createInheritedConfig",
     async (_event, folderPath: string): Promise<{ path: string; created: boolean }> => {
-      const INHERITED_FILENAME = ".voiden-inherited";
+      const INHERITED_FILENAME = ".voiden-inherited.void";
       const fullPath = path.join(folderPath, INHERITED_FILENAME);
       let created = false;
       try {
@@ -893,6 +893,13 @@ export function registerFileIpcHandlers() {
         treeResultCache.clear();
         created = true;
       }
+      // Inherited config is local-only — never meant to be committed/shared —
+      // so make sure the project's .gitignore excludes it.
+      try {
+        const { ensureVoidenGitignore } = await import("../git");
+        const activeProject = await getActiveProject();
+        if (activeProject) await ensureVoidenGitignore(activeProject);
+      } catch { /* git module may not be available in all contexts */ }
       return { path: fullPath, created };
     },
   );
