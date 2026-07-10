@@ -136,6 +136,48 @@ export function getCurlHeaderExtenders(): readonly CurlHeaderExtenderFn[] {
   return Array.from(curlHeaderExtenders.values());
 }
 
+// ── cURL auth parser registry (paste direction) ────────────────────────────────
+// The reverse of the extender above: when voiden-rest-api's curl importer parses
+// a pasted cURL command, it extracts raw auth-relevant flags/headers (it has no
+// knowledge of auth-block attr schemas — that stays owned by voiden-advanced-auth)
+// and hands them to registered parsers here, which return a ready-to-insert
+// `auth` node. Keyed by extensionId for the same reload/HMR-safety reason as
+// curlHeaderExtenders above.
+export type RawCurlAuthInput = {
+  /** From -u/--user, split on the first ":". */
+  username?: string;
+  password?: string;
+  /** Flag presence: -u interpretation depends on which of these accompany it. */
+  digest?: boolean;
+  ntlm?: boolean;
+  netrc?: boolean;
+  /** Raw --aws-sigv4 value, e.g. "aws:amz:us-east-1:execute-api". */
+  awsSigV4?: string;
+  /** Raw Authorization header value if present, e.g. "Bearer xyz" or "OAuth oauth_consumer_key=...". */
+  authorizationHeader?: string;
+};
+export type CurlAuthParseResult = {
+  /** ProseMirror JSON for a complete `auth` node, ready to insert as-is. */
+  authNode?: any;
+  /**
+   * Set when full reconstruction isn't possible from the pasted command alone
+   * (e.g. Netrc credentials live in ~/.netrc, never in the command itself;
+   * Hawk/OAuth1-HMAC secrets are one-way signed and can't be recovered).
+   * Surfaced as a toast instead of silently producing an incomplete/wrong block.
+   */
+  warning?: string;
+};
+export type CurlAuthParserFn = (raw: RawCurlAuthInput) => Promise<CurlAuthParseResult>;
+const curlAuthParsers = new Map<string, CurlAuthParserFn>();
+
+export function registerCurlAuthParser(extensionId: string, fn: CurlAuthParserFn): void {
+  curlAuthParsers.set(extensionId, fn);
+}
+
+export function getCurlAuthParsers(): readonly CurlAuthParserFn[] {
+  return Array.from(curlAuthParsers.values());
+}
+
 /**
  * Build a cURL string for a history entry, delegating to the plugin's registered builder
  * (if any) before falling back to the default REST cURL builder.
@@ -1069,6 +1111,20 @@ export const createPlugin = (
        * generated cURL commands with no error surfaced anywhere.
        */
       getCurlHeaderExtenders: (): readonly CurlHeaderExtenderFn[] => getCurlHeaderExtenders(),
+      /**
+       * Register a function that turns raw auth flags/headers extracted from a
+       * pasted cURL command into a ready-to-insert `auth` node. voiden-rest-api's
+       * curl importer has no knowledge of auth-block attr schemas (that stays
+       * owned by voiden-advanced-auth) — it only extracts raw signals (-u value,
+       * --digest/--ntlm/--netrc presence, --aws-sigv4 value, Authorization
+       * header) and passes them through this registry, the paste-direction
+       * mirror of registerCurlHeaderExtender above.
+       */
+      registerCurlAuthParser: (fn: CurlAuthParserFn) => {
+        curlAuthParsers.set(extensionId, fn);
+      },
+      /** Read back registered cURL auth parsers — same rationale as getCurlHeaderExtenders. */
+      getCurlAuthParsers: (): readonly CurlAuthParserFn[] => getCurlAuthParsers(),
     } as any,
     history: {
       /**
