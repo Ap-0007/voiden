@@ -9,6 +9,7 @@ import { TopNavBar } from "./components/TopNavBar";
 import { StatusBar } from "./components/StatusBar";
 import OnboardingModal from "@/core/screens/OnboardingModal";
 import AboutModal from "@/core/screens/AboutModal";
+import { UnsavedChangesDialog } from "./components/UnsavedChangesDialog";
 import { useGetAppState } from "@/core/state/hooks";
 import { saveTabById, useProjectLock } from "@/core/file-system/hooks";
 import { getQueryClient } from "@/main";
@@ -503,6 +504,9 @@ export const AppLayout = () => {
 
       {/* About Modal */}
       <AboutModal isOpen={isAboutModalOpen} onClose={() => setIsAboutModalOpen(false)} />
+
+      {/* In-app Unsaved Changes / Project Locked confirmation, shown when closing a dirty tab */}
+      <UnsavedChangesDialog />
     </div>
   );
 };

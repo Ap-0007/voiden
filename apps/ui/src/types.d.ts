@@ -298,6 +298,15 @@ declare global {
           tabId: string,
           unsavedContent?: string,
         ) => Promise<{ panelId: string; tabId: string; canceled?: boolean }>;
+        closePanelTabs: (
+          panelId: string,
+          tabs: Array<{ tabId: string; unsavedContent?: string }>,
+        ) => Promise<{
+          panelId: string;
+          closedTabs: Array<{ tabId: string; panelId: string }>;
+          canceledTabs: Array<{ tabId: string; panelId: string }>;
+          allClosed: boolean;
+        }>;
         renameFile: (
           oldPath: string,
           newName: string,

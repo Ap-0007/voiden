@@ -14,6 +14,11 @@ import { getGitStatusClass } from "./gitStatus";
 import { RenameInput } from "./RenameInput";
 import { useTreeNodeMutations } from "./useTreeNodeMutations";
 import { useEditorStore } from "@/core/editors/voiden/VoidenEditor";
+import { getSchema } from "@tiptap/core";
+import { voidenExtensions } from "@/core/editors/voiden/extensions";
+import { prosemirrorToMarkdown } from "@/core/file-system/hooks";
+import { useEditorEnhancementStore } from "@/plugins";
+import { confirmAndSaveTab } from "@/core/stores/unsavedChangesDialogStore";
 
 export interface TreeNodeProps extends NodeRendererProps<ExtendedFileTree> {
   activeFile: { source: string } | null;
@@ -323,15 +328,18 @@ export function TreeNode({
       node.select();
       if (node.data.type === "file") {
         if (pendingTabsEnabled) {
-          const panelData = queryClient.getQueryData<{ tabs: Array<{ id: string; pending?: boolean; source: string | null }>; activeTabId: string }>(["panel:tabs", "main"]);
+          const panelData = queryClient.getQueryData<{ tabs: Array<{ id: string; title: string; pending?: boolean; source: string | null }>; activeTabId: string }>(["panel:tabs", "main"]);
           const existingPendingTab = panelData?.tabs?.find(t => t.pending);
           if (existingPendingTab && existingPendingTab.source !== node.data.path) {
-            const hasUnsaved = !!useEditorStore.getState().unsaved[existingPendingTab.id];
-            if (hasUnsaved) {
-              const confirmed = window.confirm(
-                "The current tab has unsaved changes that will be lost. Open this file anyway?"
-              );
-              if (!confirmed) return;
+            const unsavedContent = useEditorStore.getState().unsaved[existingPendingTab.id];
+            if (unsavedContent) {
+              let contentToSave = unsavedContent;
+              if (existingPendingTab.source && existingPendingTab.source.endsWith(".void")) {
+                const schema = getSchema([...voidenExtensions, ...useEditorEnhancementStore.getState().voidenExtensions]);
+                contentToSave = prosemirrorToMarkdown(unsavedContent, schema);
+              }
+              const proceed = await confirmAndSaveTab(existingPendingTab, existingPendingTab.id, contentToSave);
+              if (!proceed) return;
             }
           }
         }

@@ -133,7 +133,7 @@ export const useClosePanelTabs = () => {
     mutationFn: async ({ panelId, tabs }: { panelId: string; tabs: Array<{ tabId: string; unsavedContent?: string }> }) => {
       return window.electron?.state.closePanelTabs(panelId, tabs);
     },
-    onSuccess: (result: { panelId: string, closedTabs: Array<{ tabId: string, panelId: string }>, canceledTabs: [], allClosed: boolean } | undefined) => {
+    onSuccess: (result: { panelId: string, closedTabs: Array<{ tabId: string, panelId: string }>, canceledTabs: Array<{ tabId: string, panelId: string }>, allClosed: boolean } | undefined) => {
       // If the user cancelled the close operation, do not update the UI.
       if (result?.closedTabs.length === 0) return;
       if (result?.panelId === 'main') {
