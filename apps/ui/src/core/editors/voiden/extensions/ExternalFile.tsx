@@ -1254,7 +1254,6 @@ export const FileLink = Node.create<FileLinkOptions>({
   inline: true,
   selectable: true,
   atom: true,
-  content: "inline*",
 
   // DEFAULT OPTIONS & RENDERING LOGIC
   addOptions() {
