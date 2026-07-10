@@ -22,7 +22,7 @@
         {
           "icon": "🐛",
           "title": "Editor Reliability Fixes",
-          "description": "Cmd/Ctrl+F now reliably opens Find in every editor, backspace no longer corrupts content at block boundaries, huge single lines no longer freeze the code editor, scrolling flicker is gone, and a false \"unsaved changes\" indicator on GraphQL files is fixed."
+          "description": "Cmd/Ctrl+F now reliably opens Find in every editor, backspace no longer corrupts content at block boundaries or requires two presses to delete a character in the request URL/method fields and table cells, huge single lines no longer freeze the code editor, scrolling flicker is gone, and a false \"unsaved changes\" indicator on GraphQL files is fixed."
         },
         {
           "icon": "💾",

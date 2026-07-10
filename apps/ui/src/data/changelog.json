@@ -32,7 +32,8 @@
         "Opening a .void file with a GraphQL block no longer shows a false \"unsaved changes\" indicator immediately on load",
         "Quitting with unsaved tabs no longer silently saves everything to disk and exits — a dialog now lists the unsaved tabs and lets you Save All & Quit, Don't Save, or Cancel",
         "Large .void files no longer render as an empty document — files with one very long line (e.g. a Postman import with a base64 file body inlined) were routed through a byte-chunked streaming path built for the plain code editor, which the Voiden editor never reads from",
-        "File uploads and binary request bodies now get a correct Content-Type for any file extension, not just a small hardcoded list — previously unlisted types (e.g. .md) fell back to a generic application/octet-stream that some servers reject"
+        "File uploads and binary request bodies now get a correct Content-Type for any file extension, not just a small hardcoded list — previously unlisted types (e.g. .md) fell back to a generic application/octet-stream that some servers reject",
+        "Backspace in the request method/URL fields and inside table cells (headers, query/path params, form data, cookies, options) now deletes on the first press instead of silently no-oping and only working on the second press"
       ]
     }
   },
