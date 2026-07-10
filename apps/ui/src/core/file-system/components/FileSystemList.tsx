@@ -908,7 +908,14 @@ export const FileSystemList = () => {
             <div
               ref={dndRootElement}
               onKeyDown={async (e) => {
-                if (e.key !== "Enter") return;
+                // event.key is "Enter" regardless of modifiers, so Cmd/Ctrl+Enter
+                // (send request) was being caught here too whenever keyboard focus
+                // was still on the tree — e.g. right after single-clicking a file,
+                // since opening a tab doesn't explicitly move focus into the editor.
+                // That silently re-activated (permanently opened/promoted) the tree's
+                // currently-selected node on every request send. Only plain Enter
+                // should trigger tree-node activation.
+                if (e.key !== "Enter" || e.metaKey || e.ctrlKey || e.altKey || e.shiftKey) return;
                 const focused = treeRef.current?.focusedNode ?? treeRef.current?.selectedNodes?.[0];
                 if (!focused || focused.data.isTemporary) return;
                 e.preventDefault();

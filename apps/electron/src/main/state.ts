@@ -469,19 +469,31 @@ async function isClosingTabInLockedProject(
 }
 
 /**
- * Windows' foreground-lock restriction (SetForegroundWindow protection) can
- * silently ignore a plain BrowserWindow.focus() call from a background
- * process right after a native dialog closes — confirmed this is what was
- * still leaving the renderer unfocusable on Windows after Linux was already
- * fixed by focus()+webContents.focus() alone. Toggling always-on-top is one
- * of the few actions Windows still honors from a background process to force
- * a window back to the foreground; harmless no-op on macOS/Linux.
+ * Windows-only: after a native dialog closes, win.focus() alone can leave the
+ * webContents' internal focus/input-method state stuck — the window is the
+ * foreground window (clicks land, mouse events work) but keyboard input never
+ * reaches the DOM. Confirmed by reproduction: clicking anywhere in the app
+ * does nothing, but alt-tabbing away and back (a real OS-level blur→focus
+ * transition) fixes it immediately. A plain focus() call is a no-op if
+ * Windows already considers the window focused, since no new transition
+ * fires for Chromium to react to — so we simulate the alt-tab transition
+ * ourselves with an explicit blur() before focus(), and defer it a tick so
+ * it doesn't race the OS's own focus handoff as the dialog's window is torn
+ * down. The always-on-top toggle stays as a second nudge for the (separate)
+ * foreground-lock/SetForegroundWindow restriction on top of that.
  */
 function forceRefocusWindow(win: BrowserWindow | null): void {
   if (!win) return;
   if (process.platform === "win32") {
-    win.setAlwaysOnTop(true);
-    win.setAlwaysOnTop(false);
+    setImmediate(() => {
+      if (win.isDestroyed()) return;
+      win.blur();
+      win.setAlwaysOnTop(true);
+      win.setAlwaysOnTop(false);
+      win.focus();
+      win.webContents.focus();
+    });
+    return;
   }
   win.focus();
   win.webContents.focus();
