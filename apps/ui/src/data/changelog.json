@@ -1,5 +1,21 @@
 [
   {
+    "version": "v2.2.1",
+    "date": "10/07/2026",
+    "title": "Pending Tab & Windows Dialog Fixes",
+    "description": "Patch release fixing pending/preview tab reliability around Cmd/Ctrl+Enter and a Windows-specific bug where the app became unresponsive to keyboard input after the unsaved-changes prompt.",
+    "icon": "Bug",
+    "iconColor": "text-red-400",
+    "bgColor": "bg-gradient-to-br from-slate-900 to-red-950",
+    "changes": {
+      "Fixed": [
+        "Sending a request (Cmd/Ctrl+Enter) from a pending/preview tab no longer permanently promotes that tab — the file tree's \"Enter activates the selected file\" shortcut only checked the Enter key itself, not any modifiers, so Cmd/Ctrl+Enter was also being caught there whenever keyboard focus was still on the tree (e.g. right after opening the tab), silently re-opening it as a permanent tab",
+        "Cmd/Ctrl+Enter no longer opens the response panel and then immediately closes it again right after opening a tab — a delayed, redundant tab-list cache refresh from the tab-open flow was re-running the panel's open/close logic a second time and stomping on the panel state Cmd/Ctrl+Enter had just set",
+        "On Windows, switching away from a tab with unsaved changes no longer leaves the app unable to receive keyboard input after the \"Unsaved Changes\" prompt — that native OS dialog has been replaced with an in-app confirmation, so there's no separate OS window whose focus hand-off Windows can mishandle. The in-app dialog now also lets you Save the pending tab's changes (previously it only offered Discard or Cancel), and is fully themed to match the app instead of using unstyled default colors"
+      ]
+    }
+  },
+  {
     "version": "v2.2.0",
     "date": "10/07/2026",
     "title": "Hierarchical Request Inheritance & Editor Reliability",
