@@ -468,9 +468,29 @@ async function isClosingTabInLockedProject(
   return await getProjectLocked(matchingRoot);
 }
 
+/**
+ * Windows' foreground-lock restriction (SetForegroundWindow protection) can
+ * silently ignore a plain BrowserWindow.focus() call from a background
+ * process right after a native dialog closes — confirmed this is what was
+ * still leaving the renderer unfocusable on Windows after Linux was already
+ * fixed by focus()+webContents.focus() alone. Toggling always-on-top is one
+ * of the few actions Windows still honors from a background process to force
+ * a window back to the foreground; harmless no-op on macOS/Linux.
+ */
+function forceRefocusWindow(win: BrowserWindow | null): void {
+  if (!win) return;
+  if (process.platform === "win32") {
+    win.setAlwaysOnTop(true);
+    win.setAlwaysOnTop(false);
+  }
+  win.focus();
+  win.webContents.focus();
+}
+
 async function saveDocument(
   closingTab: any,
   unsavedContent: string,
+  parentWindow: BrowserWindow | null,
 ): Promise<boolean> {
   if (closingTab.source) {
     try {
@@ -480,10 +500,13 @@ async function saveDocument(
       return false;
     }
   } else {
-    const { canceled, filePath } = await dialog.showSaveDialog({
+    const saveDialogOptions = {
       title: "Save Document",
       defaultPath: closingTab.title,
-    });
+    };
+    const { canceled, filePath } = parentWindow
+      ? await dialog.showSaveDialog(parentWindow, saveDialogOptions)
+      : await dialog.showSaveDialog(saveDialogOptions);
     if (!canceled && filePath) {
       try {
         await fs.writeFile(filePath, unsavedContent, "utf8");
@@ -1523,7 +1546,7 @@ export const ipcStateHandlers = () => {
   ipcMain.handle(
     "state:closePanelTab",
     async (
-      _,
+      event: IpcMainInvokeEvent,
       panelId: string,
       tabId: string,
       unsavedContent?: string, // passed from the renderer if the document is "dirty"
@@ -1543,43 +1566,70 @@ export const ipcStateHandlers = () => {
         throw new Error(`Tab with id ${tabId} not found in panel ${panelId}.`);
       }
 
+      // Parentless message/save dialogs are their own top-level OS window on
+      // Windows/Linux — closing them doesn't reliably hand keyboard focus back
+      // to the renderer's webContents (unlike macOS, where an unowned NSAlert
+      // still integrates with the app's key window). Anchoring every dialog in
+      // this flow to the window, and explicitly refocusing its webContents once
+      // we're done with them, is what keeps the newly-activated tab typable.
+      const win =
+        BrowserWindow.fromWebContents(event.sender) ??
+        BrowserWindow.getFocusedWindow();
+
       if (closingTab.type === "document" && unsavedContent) {
         const locked = await isClosingTabInLockedProject(appState, closingTab);
         if (locked) {
           const cancelId = 1;
-          const result = await dialog.showMessageBox({
-            type: "warning",
-            buttons: ["Discard", "Cancel"],
-            defaultId: 0,
-            cancelId,
-            title: "Project Locked",
-            message: `Discard unsaved changes to ${closingTab.title}?`,
-            detail:
-              "The project is locked, so these changes can't be saved. Closing the tab will discard them.",
-          });
+          const result = win
+            ? await dialog.showMessageBox(win, {
+                type: "warning",
+                buttons: ["Discard", "Cancel"],
+                defaultId: 0,
+                cancelId,
+                title: "Project Locked",
+                message: `Discard unsaved changes to ${closingTab.title}?`,
+                detail:
+                  "The project is locked, so these changes can't be saved. Closing the tab will discard them.",
+              })
+            : await dialog.showMessageBox({
+                type: "warning",
+                buttons: ["Discard", "Cancel"],
+                defaultId: 0,
+                cancelId,
+                title: "Project Locked",
+                message: `Discard unsaved changes to ${closingTab.title}?`,
+                detail:
+                  "The project is locked, so these changes can't be saved. Closing the tab will discard them.",
+              });
           if (result.response === cancelId) {
+            forceRefocusWindow(win);
             return { canceled: true };
           }
         } else {
           const cancelId = 2;
           const defaultId = 0;
-          const result = await dialog.showMessageBox({
-            type: "warning",
+          const dialogOptions = {
+            type: "warning" as const,
             buttons: ["Save", "Don't Save", "Cancel"],
             defaultId,
             cancelId,
             title: "Unsaved Changes",
             message: `Do you want to save changes made to ${closingTab.title}?`,
             detail: "Your changes will be lost if you don't save them.",
-          });
+          };
+          const result = win
+            ? await dialog.showMessageBox(win, dialogOptions)
+            : await dialog.showMessageBox(dialogOptions);
 
           if (result.response === cancelId) {
+            forceRefocusWindow(win);
             return { canceled: true };
           }
 
           if (result.response === defaultId) {
-            const success = await saveDocument(closingTab, unsavedContent);
+            const success = await saveDocument(closingTab, unsavedContent, win);
             if (!success) {
+              forceRefocusWindow(win);
               return { canceled: true };
             }
           }
@@ -1601,13 +1651,14 @@ export const ipcStateHandlers = () => {
         );
       }
       await saveState(appState);
+      forceRefocusWindow(win);
       return { panelId, tabId };
     },
   );
   ipcMain.handle(
     "state:closePanelTabs",
     async (
-      _,
+      event: IpcMainInvokeEvent,
       panelId: string,
       tabs: Array<{ tabId: string; unsavedContent?: string }>,
     ) => {
@@ -1620,6 +1671,12 @@ export const ipcStateHandlers = () => {
       if (!layout) {
         throw new Error("No layout found to close tabs.");
       }
+
+      // See the matching comment in state:closePanelTab — parentless dialogs
+      // don't reliably hand keyboard focus back to the renderer on Windows/Linux.
+      const win =
+        BrowserWindow.fromWebContents(event.sender) ??
+        BrowserWindow.getFocusedWindow();
 
       const closedTabs: Array<{ panelId: string; tabId: string }> = [];
       const canceledTabs: Array<{ panelId: string; tabId: string }> = [];
@@ -1638,8 +1695,8 @@ export const ipcStateHandlers = () => {
         if (closingTab.type === "document" && unsavedContent) {
           const locked = await isClosingTabInLockedProject(appState, closingTab);
           if (locked) {
-            const result = await dialog.showMessageBox({
-              type: "warning",
+            const lockedDialogOptions = {
+              type: "warning" as const,
               buttons: ["Discard", "Cancel"],
               defaultId: 0,
               cancelId: 1,
@@ -1647,22 +1704,28 @@ export const ipcStateHandlers = () => {
               message: `Discard unsaved changes to ${closingTab.title}?`,
               detail:
                 "The project is locked, so these changes can't be saved. Closing the tab will discard them.",
-            });
+            };
+            const result = win
+              ? await dialog.showMessageBox(win, lockedDialogOptions)
+              : await dialog.showMessageBox(lockedDialogOptions);
             if (result.response === 1) {
               canceledTabs.push({ panelId, tabId });
               shouldClose = false;
               continue;
             }
           } else {
-            const result = await dialog.showMessageBox({
-              type: "warning",
+            const dialogOptions = {
+              type: "warning" as const,
               buttons: ["Save", "Don't Save", "Cancel"],
               defaultId: 0,
               cancelId: 2,
               title: "Unsaved Changes",
               message: `Do you want to save changes made to ${closingTab.title}?`,
               detail: "Your changes will be lost if you don't save them.",
-            });
+            };
+            const result = win
+              ? await dialog.showMessageBox(win, dialogOptions)
+              : await dialog.showMessageBox(dialogOptions);
 
             if (result.response === 2) {
               canceledTabs.push({ panelId, tabId });
@@ -1671,7 +1734,7 @@ export const ipcStateHandlers = () => {
             }
 
             if (result.response === 0) {
-              const success = await saveDocument(closingTab, unsavedContent);
+              const success = await saveDocument(closingTab, unsavedContent, win);
               if (!success) {
                 canceledTabs.push({ panelId, tabId });
                 shouldClose = false;
@@ -1704,6 +1767,7 @@ export const ipcStateHandlers = () => {
         await saveState(appState);
       }
 
+      forceRefocusWindow(win);
       return {
         panelId,
         closedTabs,
